@@ -1,16 +1,12 @@
-use std::{collections::HashSet, fs, num::NonZeroU32, path::Path, sync::atomic::AtomicBool};
+use std::{
+    collections::HashSet, fs, num::NonZeroU32, path::Path, process::Command,
+    sync::atomic::AtomicBool,
+};
 
 use cargo::{
     core::Workspace,
     ops::{fetch, FetchOptions},
     Config,
-};
-use gix::{
-    bstr::BStr,
-    progress,
-    refs::file::transaction::prepare,
-    remote::fetch::{self, Shallow},
-    ThreadSafeRepository,
 };
 use serde_json::Value;
 
@@ -22,7 +18,7 @@ fn main() {
         &config,
     )
     .unwrap();
-    let fetch_options = FetchOptions {
+    let fetch_options = cargo::ops::FetchOptions {
         config: &config,
         targets: Vec::new(),
     };
@@ -54,39 +50,14 @@ fn main() {
                 let id = package.package_id().to_string();
                 println!("{id}");
                 let path = base_path.join(id);
-                /*
-                fs::create_dir_all(&path).unwrap();
-                let mut prepare_fetch = gix::prepare_clone(url.to_owned(), &path)
-                    .unwrap()
-                    .with_shallow(Shallow::DepthAtRemote(NonZeroU32::new(1).unwrap()));
-                let (mut prepare_checkout, outcome) = prepare_fetch
-                    .fetch_then_checkout(progress::Discard, &AtomicBool::new(false))
-                    .unwrap();
-                let (repository, outcome) = prepare_checkout
-                    .main_worktree(progress::Discard, &AtomicBool::new(false))
-                    .unwrap();
-                */
-                let _ = ThreadSafeRepository::init(
-                    &path,
-                    gix::create::Kind::WithWorktree,
-                    gix::create::Options::default(),
-                );
-                let repository = ThreadSafeRepository::open(&path).unwrap();
-                let repository = repository.to_thread_local();
-                let remote = repository
-                    .remote_at(url.to_owned())
-                    .unwrap()
-                    .with_refspecs(&[BStr::new(hash)], gix::remote::Direction::Fetch)
-                    .unwrap();
-                let connection = remote.connect(gix::remote::Direction::Fetch).unwrap();
-                let prepare_fetch = connection
-                    .prepare_fetch(progress::Discard, gix::remote::ref_map::Options::default())
-                    .unwrap();
-                let result = prepare_fetch
-                    .with_shallow(Shallow::DepthAtRemote(NonZeroU32::new(1).unwrap()))
-                    .receive(progress::Discard, &AtomicBool::new(false))
-                    .unwrap();
-                println!("{:#?}", result);
+                let path = path.display();
+
+                let output = Command::new("sh")
+                    .arg("-c")
+                    .arg(format!("(mkdir -p {path} && cd {path} && git init && (git remote add origin {url} || exit 0) && git fetch --depth=1 origin {hash}:{hash} && git checkout FETCH_HEAD)"))
+                    .output()
+                    .expect("failed to execute process");
+                println!("{output:?}")
             }
         }
     }
