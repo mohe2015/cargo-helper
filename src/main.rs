@@ -1,13 +1,6 @@
-use std::{
-    collections::HashSet, fs, num::NonZeroU32, path::Path, process::Command,
-    sync::atomic::AtomicBool,
-};
+use std::{fs, path::Path, process::Command};
 
-use cargo::{
-    core::Workspace,
-    ops::{fetch, FetchOptions},
-    Config,
-};
+use cargo::{core::Workspace, ops::fetch, Config};
 use serde_json::Value;
 
 fn main() {
@@ -23,9 +16,10 @@ fn main() {
         targets: Vec::new(),
     };
     let (resolve, package_set) = fetch(&workspace, &fetch_options).unwrap();
-    let packages = package_set.packages();
+    let packages: Vec<_> = package_set.packages().collect();
     let base_path = Path::new("tmp");
-    for package in packages {
+    for (index, package) in packages.iter().enumerate() {
+        println!("{index}/{}", packages.len());
         let url = package.manifest().metadata().repository.as_ref();
         if let Some(url) = url {
             println!("url: {url}");
@@ -52,12 +46,18 @@ fn main() {
                 let path = base_path.join(id);
                 let path = path.display();
 
+                // TODO progress bar
+                // TODO check if the commit is associated with a tag or somehow hidden
+                // TODO use remote set-url
+                // TODO checkout subtree if only subtree? or maybe don't because of top level files?
                 let output = Command::new("sh")
                     .arg("-c")
-                    .arg(format!("(mkdir -p {path} && cd {path} && git init && (git remote add origin {url} || exit 0) && git fetch --depth=1 origin {hash}:{hash} && git checkout FETCH_HEAD)"))
+                    .arg(format!(r#"(mkdir -p "{path}" && cd "{path}" && git init && (git remote add origin {url} || exit 0) && git fetch --depth=1 origin {hash}:{hash} && git checkout {hash})"#))
                     .output()
                     .expect("failed to execute process");
-                println!("{output:?}")
+                println!("{output:?}");
+
+                let crates_io = package.root();
             }
         }
     }
