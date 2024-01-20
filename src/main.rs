@@ -24,7 +24,7 @@ fn main() {
     };
     let (_resolve, package_set) = fetch(&workspace, &fetch_options).unwrap();
     let packages: Vec<_> = package_set.packages().collect();
-    let base_path = Path::new("/tmp/rust-supply-chain");
+    let base_path = Path::new("/home/moritz/Downloads/tmp");
     for package in packages {
         let span = info_span!(
             "package",
@@ -35,8 +35,8 @@ fn main() {
             path_in_vcs = tracing::field::Empty
         );
         let _guard = span.enter();
-        if package.package_id().source_id().is_path() {
-            info!("skipping path dependency");
+        if package.package_id().source_id().is_path() || package.package_id().source_id().is_git() {
+            info!("skipping path or git dependency");
             continue;
         }
         let url = package.manifest().metadata().repository.as_ref();
