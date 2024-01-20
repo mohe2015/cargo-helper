@@ -26,7 +26,14 @@ fn main() {
     let packages: Vec<_> = package_set.packages().collect();
     let base_path = Path::new("tmp");
     for package in packages {
-        let span = info_span!("package", package = package.package_id().tarball_name());
+        let span = info_span!(
+            "package",
+            name = package.name().to_string(),
+            version = package.version().to_string(),
+            url = package.manifest().metadata().repository,
+            sha1 = tracing::field::Empty,
+            path_in_vcs = tracing::field::Empty
+        );
         let _guard = span.enter();
         let url = package.manifest().metadata().repository.as_ref();
         if let Some(url) = url {
@@ -44,11 +51,13 @@ fn main() {
                     .as_object()
                     .unwrap();
                 let hash = git.get("sha1").unwrap().as_str().unwrap();
-                let _path_in_vcs = git
+                let path_in_vcs = vcs_info
                     .get("path_in_vcs")
                     .map(|value| value.as_str().unwrap())
                     .unwrap_or_default();
                 //println!("{:?}", hash);
+                span.record("sha1", hash);
+                span.record("path_in_vcs", path_in_vcs);
 
                 let id = package.package_id().to_string();
                 //println!("{id}");
@@ -86,12 +95,13 @@ fn main() {
                     //println!("{}", command);
                     let output = Command::new("sh")
                         .arg("-c")
-                        .arg(command)
+                        .arg(&command)
                         .output()
                         .expect("failed to execute process");
                     if !output.status.success() {
                         error!(
-                            "git failed\n{}\n{}",
+                            "{}\n{}\n{}",
+                            command,
                             std::str::from_utf8(&output.stderr).unwrap(),
                             std::str::from_utf8(&output.stdout).unwrap()
                         );
@@ -118,7 +128,7 @@ fn main() {
 
                 if !path.join("target/.done").exists() {
                     let command = format!(
-                        r#"(cd "{path_display}" && cargo package --no-verify --package {} && tar -xf target/package/{} -C target && touch target/{}/.cargo-ok && touch target/.done)"#,
+                        r#"(cd "{path_display}/{path_in_vcs}" && cargo package --no-verify --package {} && tar -xf target/package/{} -C target && touch target/{}/.cargo-ok && touch target/.done)"#,
                         package.name(),
                         package.package_id().tarball_name(),
                         package
@@ -129,12 +139,13 @@ fn main() {
                     //println!("{command}");
                     let output = Command::new("sh")
                         .arg("-c")
-                        .arg(command)
+                        .arg(&command)
                         .output()
                         .expect("failed to execute process");
                     if !output.status.success() {
                         error!(
-                            "packaging failed\n{}\n{}",
+                            "{}\n{}\n{}",
+                            command,
                             std::str::from_utf8(&output.stderr).unwrap(),
                             std::str::from_utf8(&output.stdout).unwrap()
                         );
@@ -185,7 +196,7 @@ fn main() {
                 // diffoscope --exclude-directory-metadata=yes tmp/adler\ v1.0.2/target/unpacked/adler-1.0.2/ ~/.cargo/registry/src/index.crates.io-6f17d22bba15001f/adler-1.0.2/
 
                 let command = format!(
-                    r#"diffoscope --exclude "**/.cargo-ok" --exclude "**/.cargo_vcs_info.json" --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{path_display}/target/{}" {crates_io}"#,
+                    r#"diffoscope --exclude "**/.cargo-ok" --exclude "**/.cargo_vcs_info.json" --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{path_display}/{path_in_vcs}/target/{}" {crates_io}"#,
                     package
                         .package_id()
                         .tarball_name()
@@ -194,12 +205,13 @@ fn main() {
                 // println!("{command}");
                 let output = Command::new("sh")
                     .arg("-c")
-                    .arg(command)
+                    .arg(&command)
                     .output()
                     .expect("failed to execute process");
                 if !output.status.success() {
                     error!(
-                        "diffoscope failed\n{}\n{}",
+                        "{}\n{}\n{}",
+                        command,
                         std::str::from_utf8(&output.stderr).unwrap(),
                         std::str::from_utf8(&output.stdout).unwrap()
                     );
