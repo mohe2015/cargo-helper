@@ -80,22 +80,26 @@ fn main() {
                 // TODO checkout subtree if only subtree? or maybe don't because of top level files?
 
                 // TODO FIXME only clone and checkout once as commits are immutable
-                let command = format!(
-                    r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --depth=1 {url} {hash} && git checkout FETCH_HEAD)"#
-                );
-                println!("{}", command);
-                let output = Command::new("sh")
-                    .arg("-c")
-                    .arg(command)
-                    .output()
-                    .expect("failed to execute process");
-                if !output.status.success() {
-                    println!(
-                        "failed {} {}",
-                        std::str::from_utf8(&output.stderr).unwrap(),
-                        std::str::from_utf8(&output.stdout).unwrap()
+                if !path.join(".git/.done").exists() {
+                    let command = format!(
+                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --depth=1 {url} {hash} && git checkout FETCH_HEAD && touch .git/.done)"#
                     );
-                    continue;
+                    println!("{}", command);
+                    let output = Command::new("sh")
+                        .arg("-c")
+                        .arg(command)
+                        .output()
+                        .expect("failed to execute process");
+                    if !output.status.success() {
+                        println!(
+                            "failed {} {}",
+                            std::str::from_utf8(&output.stderr).unwrap(),
+                            std::str::from_utf8(&output.stdout).unwrap()
+                        );
+                        continue;
+                    }
+                } else {
+                    println!("already cloned, skipping")
                 }
 
                 // TODO FIXME workspace paths e.g. thiserror-impl
@@ -132,7 +136,7 @@ fn main() {
                         .status()
                         .expect("failed to execute process");
                 } else {
-                    println!("already cloned, skipping")
+                    println!("already packaged, skipping")
                 }
 
                 /*let registry_source_id = SourceId::alt_registry(
