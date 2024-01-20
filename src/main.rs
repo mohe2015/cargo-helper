@@ -128,7 +128,7 @@ fn main() {
                     let package_name = package.name().to_string();
                     let command = format!(
                         //  && touch .git/.done
-                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --filter=tree:0 {url} && git checkout FETCH_HEAD && git bisect start FETCH_HEAD $(git rev-list --max-parents=0 FETCH_HEAD) && git bisect run sh -c '(! cargo metadata --format-version=1 --no-deps) || echo -e -n "{version}\n$(cargo metadata --format-version=1 --no-deps | jq --raw-output ".packages[] | select(.name == \"{package_name}\") | .version")" | (! sort -V -C)' && git submodule update --init)"#,
+                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --filter=tree:0 {url} && git checkout FETCH_HEAD && git bisect start FETCH_HEAD $(git rev-list --max-parents=0 FETCH_HEAD) && git bisect run sh -c '(! cargo metadata --format-version=1 --no-deps) || echo -e -n "{version}\n$(cargo metadata --format-version=1 --no-deps | jq --raw-output ".packages[] | select(.name == \"{package_name}\") | .version")" | (! sort -V -C)' && git checkout refs/bisect/bad && git submodule update --init)"#,
                     );
 
                     // maybe find commit by release date? shouldn't make too much sense because maybe you test code and release then
@@ -149,13 +149,6 @@ fn main() {
                             std::str::from_utf8(&output.stdout).unwrap()
                         );
                         continue;
-                    } else {
-                        info!(
-                            "{}\n{}\n{}",
-                            command,
-                            std::str::from_utf8(&output.stderr).unwrap(),
-                            std::str::from_utf8(&output.stdout).unwrap()
-                        );
                     }
                 } else {
                     //println!("already cloned, skipping")
