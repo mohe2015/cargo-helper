@@ -1,10 +1,6 @@
 use std::{fs, path::Path, process::Command};
 
-use cargo::{
-    core::{Workspace},
-    ops::fetch,
-    Config,
-};
+use cargo::{core::Workspace, ops::fetch, Config};
 use serde_json::Value;
 
 fn main() {
@@ -103,8 +99,9 @@ fn main() {
                 let _output = Command::new("sh")
                     .arg("-c")
                     .arg(format!(
-                        r#"(cd "{path}" && cargo package --no-verify --package {})"#,
-                        package.name()
+                        r#"(cd "{path}" && cargo package --no-verify --package {} && tar -xf target/package/{} -C target)"#,
+                        package.name(),
+                        package.package_id().tarball_name()
                     ))
                     .status()
                     .expect("failed to execute process");
@@ -145,15 +142,15 @@ fn main() {
                 //println!("test {}", crates_io_crate_file.as_path_unlocked().display());
                 let crates_io_crate_file = crates_io_crate_file.display();
                 let crates_io = package.root();
-                let _crates_io = crates_io.display();
+                let crates_io = crates_io.display();
 
                 // diffoscope --exclude-directory-metadata=yes tmp/adler\ v1.0.2/target/unpacked/adler-1.0.2/ ~/.cargo/registry/src/index.crates.io-6f17d22bba15001f/adler-1.0.2/
 
                 let _output = Command::new("sh")
                     .arg("-c")
                     .arg(format!(
-                        r#"diffoscope --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{path}/target/package/{}" {crates_io_crate_file}"#,
-                        package.package_id().tarball_name()
+                        r#"diffoscope --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{path}/target/{}" {crates_io}"#,
+                        package.package_id().tarball_name().trim_end_matches(".crate"),
                     ))
                     .status()
                     .expect("failed to execute process");
