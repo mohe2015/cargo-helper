@@ -1,12 +1,8 @@
-use std::{
-    fs,
-    path::Path,
-    process::{Command, Stdio},
-};
+use std::{fs, path::Path, process::Command};
 
 use cargo::{core::Workspace, ops::fetch, Config};
 use serde_json::Value;
-use tracing::{error, info_span, trace, warn};
+use tracing::{error, info_span, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 fn main() {
@@ -29,7 +25,7 @@ fn main() {
     let (_resolve, package_set) = fetch(&workspace, &fetch_options).unwrap();
     let packages: Vec<_> = package_set.packages().collect();
     let base_path = Path::new("tmp");
-    for (index, package) in packages.iter().enumerate() {
+    for package in packages {
         let span = info_span!("package", package = package.package_id().tarball_name());
         let _guard = span.enter();
         let url = package.manifest().metadata().repository.as_ref();
