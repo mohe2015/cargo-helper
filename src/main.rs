@@ -24,7 +24,7 @@ fn main() {
     };
     let (_resolve, package_set) = fetch(&workspace, &fetch_options).unwrap();
     let packages: Vec<_> = package_set.packages().collect();
-    let base_path = Path::new("tmp");
+    let base_path = Path::new("/tmp/rust-supply-chain");
     for package in packages {
         let span = info_span!(
             "package",
@@ -44,9 +44,13 @@ fn main() {
             let url = url.split("/tree/").next().unwrap();
             let vcs_info = package.root().join(".cargo_vcs_info.json");
             let vcs_info = fs::read_to_string(vcs_info);
-            let id = package.package_id().to_string();
             //println!("{id}");
-            let path = base_path.join(id);
+            let path = base_path.join(
+                package
+                    .package_id()
+                    .tarball_name()
+                    .trim_end_matches(".crate"),
+            );
             let path_display = path.display();
             let registry_name_with_hash = package
                 .root()
@@ -117,12 +121,6 @@ fn main() {
                 path_in_vcs.to_owned()
             } else {
                 warn!("no vcs version info, bisecting...");
-
-                // TODO FIXME use path without spaces as they are more conventient
-                let id = package.package_id().to_string();
-                //println!("{id}");
-                let path = base_path.join(id);
-                let path_display = path.display();
 
                 if !path.join(".git/.done").exists() {
                     let version = package.version().to_string();
