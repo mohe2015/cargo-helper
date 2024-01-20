@@ -126,9 +126,36 @@ fn main() {
 
                 // only package and extract once to reduce disk strain
 
-                if !path.join("target/.done").exists() {
+                let target_directory = {
                     let command = format!(
-                        r#"(cd "{path_display}/{path_in_vcs}" && cargo package --no-verify --package {} && tar -xf target/package/{} -C target && touch target/{}/.cargo-ok && touch target/.done)"#,
+                        r#"(cd "{path_display}/{path_in_vcs}" && cargo locate-project --workspace --message-format plain)"#,
+                    );
+                    let output = Command::new("sh")
+                        .arg("-c")
+                        .arg(&command)
+                        .output()
+                        .expect("failed to execute process");
+                    if !output.status.success() {
+                        error!(
+                            "{}\n{}\n{}",
+                            command,
+                            std::str::from_utf8(&output.stderr).unwrap(),
+                            std::str::from_utf8(&output.stdout).unwrap()
+                        );
+                        continue;
+                    } else {
+                        Path::new(std::str::from_utf8(&output.stdout).unwrap())
+                            .parent()
+                            .unwrap()
+                            .join("target")
+                    }
+                };
+                let target_directory_display = target_directory.display();
+                //println!("the target directory: \"{}\"", target_directory_display);
+
+                if !target_directory.join(".done").exists() {
+                    let command = format!(
+                        r#"(cd "{path_display}/{path_in_vcs}" && cargo package --no-verify --package {} && tar -xf {target_directory_display}/package/{} -C {target_directory_display} && touch {target_directory_display}/{}/.cargo-ok && touch {target_directory_display}/.done)"#,
                         package.name(),
                         package.package_id().tarball_name(),
                         package
@@ -196,7 +223,7 @@ fn main() {
                 // diffoscope --exclude-directory-metadata=yes tmp/adler\ v1.0.2/target/unpacked/adler-1.0.2/ ~/.cargo/registry/src/index.crates.io-6f17d22bba15001f/adler-1.0.2/
 
                 let command = format!(
-                    r#"diffoscope --exclude "**/.cargo-ok" --exclude "**/.cargo_vcs_info.json" --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{path_display}/{path_in_vcs}/target/{}" {crates_io}"#,
+                    r#"diffoscope --exclude "**/.cargo-ok" --exclude "**/.cargo_vcs_info.json" --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{target_directory_display}/{}" {crates_io}"#,
                     package
                         .package_id()
                         .tarball_name()
