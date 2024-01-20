@@ -44,7 +44,19 @@ fn main() {
             let url = url.split("/tree/").next().unwrap();
             let vcs_info = package.root().join(".cargo_vcs_info.json");
             let vcs_info = fs::read_to_string(vcs_info);
-            if let Ok(vcs_info) = vcs_info {
+            let id = package.package_id().to_string();
+            //println!("{id}");
+            let path = base_path.join(id);
+            let path_display = path.display();
+            let registry_name_with_hash = package
+                .root()
+                .parent()
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap();
+            let path_in_vcs = if let Ok(vcs_info) = vcs_info {
                 let vcs_info = serde_json::from_str::<Value>(&vcs_info).unwrap();
                 //println!("{:?}", vcs_info);
                 let git = vcs_info
@@ -63,11 +75,6 @@ fn main() {
                 span.record("sha1", hash);
                 span.record("path_in_vcs", path_in_vcs);
 
-                let id = package.package_id().to_string();
-                //println!("{id}");
-                let path = base_path.join(id);
-                let path_display = path.display();
-
                 // we could also just call package in our clone but that is likely dangerous
                 // TODO FIXME honor these
                 /*println!(
@@ -76,14 +83,6 @@ fn main() {
                     package.manifest().include()
                 );*/
 
-                let registry_name_with_hash = package
-                    .root()
-                    .parent()
-                    .unwrap()
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap();
                 //println!("REGISTRY NAME {}", registry_name_with_hash);
 
                 // TODO progress bar
@@ -114,6 +113,8 @@ fn main() {
                 } else {
                     //println!("already cloned, skipping")
                 }
+
+                path_in_vcs.to_owned()
             } else {
                 warn!("no vcs version info, bisecting...");
 
@@ -152,7 +153,9 @@ fn main() {
                 } else {
                     //println!("already cloned, skipping")
                 }
-            }
+
+                String::new()
+            };
             // TODO FIXME workspace paths e.g. thiserror-impl
             // maybe really use cargo package as there are so many small details
 
