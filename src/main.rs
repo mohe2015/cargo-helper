@@ -252,7 +252,41 @@ fn main() {
                     continue;
                 }
             } else {
-                warn!("no vcs version info, would need to guess or bruteforce version")
+                warn!("no vcs version info, bisecting...");
+
+                // TODO FIXME use path without spaces as they are more conventient
+                let id = package.package_id().to_string();
+                //println!("{id}");
+                let path = base_path.join(id);
+                let path_display = path.display();
+
+                if !path.join(".git/.done").exists() {
+                    let command = format!(
+                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --filter=tree:0 {url} && git checkout FETCH_HEAD)"#,
+                    );
+
+                    // maybe find commit by release date? shouldn't make too much sense because maybe you test code and release then
+                    // git bisect start HEAD $(git rev-list --max-parents=0 HEAD)
+                    // git bisect run sh -c 'echo -e "$(cargo metadata --format-version=1 --no-deps | jq --raw-output ".packages[] | select(.name == \"js-sys\") | .version")\n0.3.50" | sort -V -C'
+
+                    //println!("{}", command);
+                    let output = Command::new("sh")
+                        .arg("-c")
+                        .arg(&command)
+                        .output()
+                        .expect("failed to execute process");
+                    if !output.status.success() {
+                        error!(
+                            "{}\n{}\n{}",
+                            command,
+                            std::str::from_utf8(&output.stderr).unwrap(),
+                            std::str::from_utf8(&output.stdout).unwrap()
+                        );
+                        continue;
+                    }
+                } else {
+                    //println!("already cloned, skipping")
+                }
             }
         } else {
             error!("no repository url, can't check anything");
