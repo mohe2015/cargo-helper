@@ -11,9 +11,6 @@ use serde_json::Value;
 fn main() {
     println!("Checking supply chain security...");
     let config = Config::default().unwrap();
-    let lock = config
-        .acquire_package_cache_lock(cargo::util::cache_lock::CacheLockMode::DownloadExclusive)
-        .unwrap();
     let workspace = Workspace::new(
         Path::new("/home/moritz/Documents/perfect-group-allocation/Cargo.toml"),
         &config,
@@ -27,7 +24,11 @@ fn main() {
     let packages: Vec<_> = package_set.packages().collect();
     let base_path = Path::new("tmp");
     for (index, package) in packages.iter().enumerate() {
-        //println!("{index}/{}", packages.len());
+        println!(
+            "[{index}/{}] {}",
+            packages.len(),
+            package.package_id().tarball_name()
+        );
         let url = package.manifest().metadata().repository.as_ref();
         if let Some(url) = url {
             //println!("url: {url}");
@@ -103,9 +104,8 @@ fn main() {
                         r#"(cd "{path}" && cargo package --no-verify --package {})"#,
                         package.name()
                     ))
-                    .output()
+                    .status()
                     .expect("failed to execute process");
-                println!("{output:?}");
 
                 /*let registry_source_id = SourceId::alt_registry(
                     &config,
@@ -145,12 +145,11 @@ fn main() {
                 let output = Command::new("sh")
                     .arg("-c")
                     .arg(format!(
-                        r#"diffoscope "{path}/target/package/{}" {crates_io_crate_file}"#,
+                        r#"diffoscope --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{path}/target/package/{}" {crates_io_crate_file}"#,
                         package.package_id().tarball_name()
                     ))
-                    .output()
+                    .status()
                     .expect("failed to execute process");
-                println!("{output:?}");
             }
         }
     }
