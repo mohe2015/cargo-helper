@@ -128,7 +128,7 @@ fn main() {
 
                 let target_directory = {
                     let command = format!(
-                        r#"(cd "{path_display}/{path_in_vcs}" && cargo locate-project --workspace --message-format plain)"#,
+                        r#"(cd "{path_display}/{path_in_vcs}" && cargo metadata --format-version 1 --no-deps | jq --raw-output .target_directory)"#,
                     );
                     let output = Command::new("sh")
                         .arg("-c")
@@ -155,7 +155,7 @@ fn main() {
 
                 if !target_directory.join(".done").exists() {
                     let command = format!(
-                        r#"(cd "{path_display}/{path_in_vcs}" && cargo package --no-verify --package {} && tar -xf "{target_directory_display}/package/{}" -C "{target_directory_display}" && touch "{target_directory_display}/{}/.cargo-ok" && touch "{target_directory_display}/.done")"#,
+                        r#"(cd "{path_display}/{path_in_vcs}" && cargo package --allow-dirty --no-verify --package {} && tar -xf "{target_directory_display}/package/{}" -C "{target_directory_display}" && touch "{target_directory_display}/{}/.cargo-ok" && touch "{target_directory_display}/.done")"#,
                         package.name(),
                         package.package_id().tarball_name(),
                         package
