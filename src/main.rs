@@ -266,8 +266,8 @@ fn main() {
                     );
 
                     // maybe find commit by release date? shouldn't make too much sense because maybe you test code and release then
-                    // git bisect start HEAD $(git rev-list --max-parents=0 HEAD)
-                    // git bisect run sh -c 'echo -e "$(cargo metadata --format-version=1 --no-deps | jq --raw-output ".packages[] | select(.name == \"js-sys\") | .version")\n0.3.50" | sort -V -C'
+                    // git bisect start FETCH_HEAD $(git rev-list --max-parents=0 FETCH_HEAD)
+                    // git bisect run sh -c 'echo -e -n "$(cargo metadata --format-version=1 --no-deps | jq --raw-output ".packages[] | select(.name == \"js-sys\") | .version")\n0.3.50" | sort -V -C'
 
                     //println!("{}", command);
                     let output = Command::new("sh")
