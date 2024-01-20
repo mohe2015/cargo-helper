@@ -54,7 +54,7 @@ fn main() {
                 let id = package.package_id().to_string();
                 //println!("{id}");
                 let path = base_path.join(id);
-                let path = path.display();
+                let path_display = path.display();
 
                 // we could also just call package in our clone but that is likely dangerous
                 // TODO FIXME honor these
@@ -81,7 +81,7 @@ fn main() {
 
                 // TODO FIXME only clone and checkout once as commits are immutable
                 let command = format!(
-                    r#"(mkdir -p "{path}" && cd "{path}" && git init && (git remote add origin {url} || exit 0) && git fetch --depth=1 origin {hash} && git checkout FETCH_HEAD)"#
+                    r#"(mkdir -p "{path}" && cd "{path}" && git init && git fetch --depth=1 {url} {hash} && git checkout FETCH_HEAD)"#
                 );
                 println!("{}", command);
                 let output = Command::new("sh")
@@ -112,23 +112,28 @@ fn main() {
                 // diffoscope /home/moritz/Documents/cargo-helper/tmp/thiserror-impl\ v1.0.56/target/package/thiserror-impl-1.0.56.crate ~/.cargo/registry/cache/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.56.crate
 
                 // only package and extract once to reduce disk strain
-                let command = format!(
-                    r#"(cd "{path}" && cargo package --no-verify --package {} && tar -xf target/package/{} -C target && touch target/{}/.cargo-ok)"#,
-                    package.name(),
-                    package.package_id().tarball_name(),
-                    package
-                        .package_id()
-                        .tarball_name()
-                        .trim_end_matches(".crate")
-                );
-                println!("{command}");
-                let _output = Command::new("sh")
-                    .arg("-c")
-                    .arg(command)
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null())
-                    .status()
-                    .expect("failed to execute process");
+
+                if !path.join("target/.done").exists() {
+                    let command = format!(
+                        r#"(cd "{path_display}" && cargo package --no-verify --package {} && tar -xf target/package/{} -C target && touch target/{}/.cargo-ok && touch target/.done)"#,
+                        package.name(),
+                        package.package_id().tarball_name(),
+                        package
+                            .package_id()
+                            .tarball_name()
+                            .trim_end_matches(".crate")
+                    );
+                    println!("{command}");
+                    let _output = Command::new("sh")
+                        .arg("-c")
+                        .arg(command)
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .status()
+                        .expect("failed to execute process");
+                } else {
+                    println!("already cloned, skipping")
+                }
 
                 /*let registry_source_id = SourceId::alt_registry(
                     &config,
