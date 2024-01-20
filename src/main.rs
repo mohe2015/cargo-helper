@@ -144,10 +144,12 @@ fn main() {
                         );
                         continue;
                     } else {
-                        Path::new(std::str::from_utf8(&output.stdout).unwrap())
-                            .parent()
-                            .unwrap()
-                            .join("target")
+                        let output = std::str::from_utf8(&output.stdout).unwrap().trim();
+                        if output.is_empty() {
+                            error!("failed to find target directory");
+                            continue;
+                        }
+                        Path::new(output).parent().unwrap().join("target")
                     }
                 };
                 let target_directory_display = target_directory.display();
@@ -223,7 +225,7 @@ fn main() {
                 // diffoscope --exclude-directory-metadata=yes tmp/adler\ v1.0.2/target/unpacked/adler-1.0.2/ ~/.cargo/registry/src/index.crates.io-6f17d22bba15001f/adler-1.0.2/
 
                 let command = format!(
-                    r#"diffoscope --exclude "**/.cargo-ok" --exclude "**/.cargo_vcs_info.json" --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{target_directory_display}/{}" "{crates_io}""#,
+                    r#"diff -w --color -r --exclude ".cargo-ok" --exclude ".cargo_vcs_info.json" --exclude "Cargo.toml" --exclude "Cargo.lock" "{target_directory_display}/{}" "{crates_io}""#,
                     package
                         .package_id()
                         .tarball_name()
