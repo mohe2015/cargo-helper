@@ -81,7 +81,7 @@ fn main() {
 
                 // TODO FIXME only clone and checkout once as commits are immutable
                 let command = format!(
-                    r#"(mkdir -p "{path}" && cd "{path}" && git init && git fetch --depth=1 {url} {hash} && git checkout FETCH_HEAD)"#
+                    r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --depth=1 {url} {hash} && git checkout FETCH_HEAD)"#
                 );
                 println!("{}", command);
                 let output = Command::new("sh")
@@ -176,7 +176,7 @@ fn main() {
                 // diffoscope --exclude-directory-metadata=yes tmp/adler\ v1.0.2/target/unpacked/adler-1.0.2/ ~/.cargo/registry/src/index.crates.io-6f17d22bba15001f/adler-1.0.2/
 
                 let command = format!(
-                    r#"diffoscope --exclude "**/.cargo-ok" --exclude "**/.cargo_vcs_info.json" --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{path}/target/{}" {crates_io}"#,
+                    r#"diffoscope --exclude "**/.cargo-ok" --exclude "**/.cargo_vcs_info.json" --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{path_display}/target/{}" {crates_io}"#,
                     package
                         .package_id()
                         .tarball_name()
