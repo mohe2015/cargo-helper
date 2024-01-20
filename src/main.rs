@@ -1,9 +1,14 @@
-use std::{fs, path::Path, process::Command};
+use std::{
+    fs,
+    path::Path,
+    process::{Command, Stdio},
+};
 
 use cargo::{core::Workspace, ops::fetch, Config};
 use serde_json::Value;
 
 fn main() {
+    // clear && cargo run | tee report.txt
     println!("Checking supply chain security...");
     let config = Config::default().unwrap();
     let workspace = Workspace::new(
@@ -73,13 +78,23 @@ fn main() {
                 // TODO check if the commit is associated with a tag or somehow hidden
                 // TODO use remote set-url
                 // TODO checkout subtree if only subtree? or maybe don't because of top level files?
+
+                // TODO FIXME only clone and checkout once as commits are immutable
+                let command = format!(
+                    r#"(mkdir -p "{path}" && cd "{path}" && git init && (git remote add origin {url} || exit 0) && git fetch --depth=1 origin {hash} && git checkout FETCH_HEAD)"#
+                );
+                println!("{}", command);
                 let output = Command::new("sh")
                     .arg("-c")
-                    .arg(format!(r#"(mkdir -p "{path}" && cd "{path}" && git init && (git remote add origin {url} || exit 0) && git fetch --depth=1 origin {hash} && git checkout FETCH_HEAD)"#))
-                    .status()
+                    .arg(command)
+                    .output()
                     .expect("failed to execute process");
-                if !output.success() {
-                    println!("failed");
+                if !output.status.success() {
+                    println!(
+                        "failed {} {}",
+                        std::str::from_utf8(&output.stderr).unwrap(),
+                        std::str::from_utf8(&output.stdout).unwrap()
+                    );
                     continue;
                 }
 
@@ -96,13 +111,22 @@ fn main() {
 
                 // diffoscope /home/moritz/Documents/cargo-helper/tmp/thiserror-impl\ v1.0.56/target/package/thiserror-impl-1.0.56.crate ~/.cargo/registry/cache/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.56.crate
 
+                // only package and extract once to reduce disk strain
+                let command = format!(
+                    r#"(cd "{path}" && cargo package --no-verify --package {} && tar -xf target/package/{} -C target && touch target/{}/.cargo-ok)"#,
+                    package.name(),
+                    package.package_id().tarball_name(),
+                    package
+                        .package_id()
+                        .tarball_name()
+                        .trim_end_matches(".crate")
+                );
+                println!("{command}");
                 let _output = Command::new("sh")
                     .arg("-c")
-                    .arg(format!(
-                        r#"(cd "{path}" && cargo package --no-verify --package {} && tar -xf target/package/{} -C target)"#,
-                        package.name(),
-                        package.package_id().tarball_name()
-                    ))
+                    .arg(command)
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
                     .status()
                     .expect("failed to execute process");
 
@@ -140,21 +164,30 @@ fn main() {
                     .join(registry_name_with_hash)
                     .join(package.package_id().tarball_name());
                 //println!("test {}", crates_io_crate_file.as_path_unlocked().display());
-                let crates_io_crate_file = crates_io_crate_file.display();
+                let _crates_io_crate_file = crates_io_crate_file.display();
                 let crates_io = package.root();
                 let crates_io = crates_io.display();
 
                 // diffoscope --exclude-directory-metadata=yes tmp/adler\ v1.0.2/target/unpacked/adler-1.0.2/ ~/.cargo/registry/src/index.crates.io-6f17d22bba15001f/adler-1.0.2/
 
+                let command = format!(
+                    r#"diffoscope --exclude "**/.cargo-ok" --exclude "**/.cargo_vcs_info.json" --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{path}/target/{}" {crates_io}"#,
+                    package
+                        .package_id()
+                        .tarball_name()
+                        .trim_end_matches(".crate"),
+                );
+                println!("{command}");
                 let _output = Command::new("sh")
                     .arg("-c")
-                    .arg(format!(
-                        r#"diffoscope --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{path}/target/{}" {crates_io}"#,
-                        package.package_id().tarball_name().trim_end_matches(".crate"),
-                    ))
+                    .arg(command)
                     .status()
                     .expect("failed to execute process");
+            } else {
+                println!("no vcs version info, would need to guess or bruteforce version")
             }
+        } else {
+            println!("no repository url, can't check anything");
         }
     }
 }
