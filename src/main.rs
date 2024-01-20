@@ -2,7 +2,7 @@ use std::{fs, path::Path, process::Command};
 
 use cargo::{core::Workspace, ops::fetch, Config};
 use serde_json::Value;
-use tracing::{debug, error, info_span, warn};
+use tracing::{debug, error, info, info_span, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 fn main() {
@@ -122,11 +122,13 @@ fn main() {
             } else {
                 warn!("no vcs version info, bisecting...");
 
-                if !path.join(".git/.done").exists() {
+                if true {
+                    // !path.join(".git/.done").exists()
                     let version = package.version().to_string();
                     let package_name = package.name().to_string();
                     let command = format!(
-                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --filter=tree:0 {url} && git checkout FETCH_HEAD && git bisect start FETCH_HEAD $(git rev-list --max-parents=0 FETCH_HEAD) && git bisect run sh -c '! echo -e -n "{version}\n$(cargo metadata --format-version=1 --no-deps | jq --raw-output ".packages[] | select(.name == \"{package_name}\") | .version")" | sort -V -C' && git submodule update --init && touch .git/.done)"#,
+                        //  && touch .git/.done
+                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --filter=tree:0 {url} && git checkout FETCH_HEAD && git bisect start FETCH_HEAD $(git rev-list --max-parents=0 FETCH_HEAD) && git bisect run sh -c '(! cargo metadata --format-version=1 --no-deps) || echo -e -n "{version}\n$(cargo metadata --format-version=1 --no-deps | jq --raw-output ".packages[] | select(.name == \"{package_name}\") | .version")" | (! sort -V -C)' && git submodule update --init)"#,
                     );
 
                     // maybe find commit by release date? shouldn't make too much sense because maybe you test code and release then
@@ -147,6 +149,13 @@ fn main() {
                             std::str::from_utf8(&output.stdout).unwrap()
                         );
                         continue;
+                    } else {
+                        info!(
+                            "{}\n{}\n{}",
+                            command,
+                            std::str::from_utf8(&output.stderr).unwrap(),
+                            std::str::from_utf8(&output.stdout).unwrap()
+                        );
                     }
                 } else {
                     //println!("already cloned, skipping")
