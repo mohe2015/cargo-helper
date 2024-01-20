@@ -78,12 +78,15 @@ fn main() {
                 // TODO check if the commit is associated with a tag or somehow hidden
                 // TODO use remote set-url
                 // TODO checkout subtree if only subtree? or maybe don't because of top level files?
-                /* let output = Command::new("sh")
+                let output = Command::new("sh")
                     .arg("-c")
-                    .arg(format!(r#"(mkdir -p "{path}" && cd "{path}" && git init && (git remote add origin {url} || exit 0) && git fetch --depth=1 origin {hash}:{hash} && git checkout {hash})"#))
-                    .output()
+                    .arg(format!(r#"(mkdir -p "{path}" && cd "{path}" && git init && (git remote add origin {url} || exit 0) && git fetch --depth=1 origin {hash} && git checkout FETCH_HEAD)"#))
+                    .status()
                     .expect("failed to execute process");
-                println!("{output:?}");*/
+                if !output.success() {
+                    println!("failed");
+                    continue;
+                }
 
                 // TODO FIXME workspace paths e.g. thiserror-impl
                 // maybe really use cargo package as there are so many small details
@@ -133,6 +136,9 @@ fn main() {
                                     }
                                 );
                 */
+
+                // mkdir -p tmp/adler\ v1.0.2/target/unpacked  && tar -xf tmp/adler\ v1.0.2/target/package/adler-1.0.2.crate -C tmp/adler\ v1.0.2/target/unpacked
+
                 let crates_io_crate_file = config
                     .registry_cache_path()
                     .join(registry_name_with_hash)
@@ -141,6 +147,8 @@ fn main() {
                 let crates_io_crate_file = crates_io_crate_file.display();
                 let crates_io = package.root();
                 let crates_io = crates_io.display();
+
+                // diffoscope --exclude-directory-metadata=yes tmp/adler\ v1.0.2/target/unpacked/adler-1.0.2/ ~/.cargo/registry/src/index.crates.io-6f17d22bba15001f/adler-1.0.2/
 
                 let output = Command::new("sh")
                     .arg("-c")
