@@ -2,7 +2,7 @@ use std::{fs, path::Path, process::Command};
 
 use cargo::{core::Workspace, ops::fetch, Config};
 use serde_json::Value;
-use tracing::{error, info_span, warn};
+use tracing::{error, info, info_span, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 fn main() {
@@ -35,6 +35,10 @@ fn main() {
             path_in_vcs = tracing::field::Empty
         );
         let _guard = span.enter();
+        if package.package_id().source_id().is_path() {
+            info!("skipping path dependency");
+            continue;
+        }
         let url = package.manifest().metadata().repository.as_ref();
         if let Some(url) = url {
             let url = url.split("/tree/").next().unwrap();
@@ -224,8 +228,9 @@ fn main() {
 
                 // diffoscope --exclude-directory-metadata=yes tmp/adler\ v1.0.2/target/unpacked/adler-1.0.2/ ~/.cargo/registry/src/index.crates.io-6f17d22bba15001f/adler-1.0.2/
 
+                // a few packages are distributed with whitespace changes only
                 let command = format!(
-                    r#"diff -w --color -r --exclude ".cargo-ok" --exclude ".cargo_vcs_info.json" --exclude "Cargo.toml" --exclude "Cargo.lock" "{target_directory_display}/{}" "{crates_io}""#,
+                    r#"diff -w --color -r --exclude ".github" --exclude ".cargo-ok" --exclude ".cargo_vcs_info.json" --exclude "Cargo.toml" --exclude "Cargo.lock" "{target_directory_display}/{}" "{crates_io}""#,
                     package
                         .package_id()
                         .tarball_name()
