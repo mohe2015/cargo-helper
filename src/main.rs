@@ -1,9 +1,8 @@
-use std::{collections::HashSet, fs, hash::Hash, path::Path, process::Command};
+use std::{fs, path::Path, process::Command};
 
 use cargo::{
-    core::{registry, SourceId, Workspace},
+    core::{Workspace},
     ops::fetch,
-    sources::{source::Source, RegistrySource},
     Config,
 };
 use serde_json::Value;
@@ -20,7 +19,7 @@ fn main() {
         config: &config,
         targets: Vec::new(),
     };
-    let (resolve, package_set) = fetch(&workspace, &fetch_options).unwrap();
+    let (_resolve, package_set) = fetch(&workspace, &fetch_options).unwrap();
     let packages: Vec<_> = package_set.packages().collect();
     let base_path = Path::new("tmp");
     for (index, package) in packages.iter().enumerate() {
@@ -45,7 +44,7 @@ fn main() {
                     .as_object()
                     .unwrap();
                 let hash = git.get("sha1").unwrap().as_str().unwrap();
-                let path_in_vcs = git
+                let _path_in_vcs = git
                     .get("path_in_vcs")
                     .map(|value| value.as_str().unwrap())
                     .unwrap_or_default();
@@ -101,7 +100,7 @@ fn main() {
 
                 // diffoscope /home/moritz/Documents/cargo-helper/tmp/thiserror-impl\ v1.0.56/target/package/thiserror-impl-1.0.56.crate ~/.cargo/registry/cache/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.56.crate
 
-                let output = Command::new("sh")
+                let _output = Command::new("sh")
                     .arg("-c")
                     .arg(format!(
                         r#"(cd "{path}" && cargo package --no-verify --package {})"#,
@@ -146,11 +145,11 @@ fn main() {
                 //println!("test {}", crates_io_crate_file.as_path_unlocked().display());
                 let crates_io_crate_file = crates_io_crate_file.display();
                 let crates_io = package.root();
-                let crates_io = crates_io.display();
+                let _crates_io = crates_io.display();
 
                 // diffoscope --exclude-directory-metadata=yes tmp/adler\ v1.0.2/target/unpacked/adler-1.0.2/ ~/.cargo/registry/src/index.crates.io-6f17d22bba15001f/adler-1.0.2/
 
-                let output = Command::new("sh")
+                let _output = Command::new("sh")
                     .arg("-c")
                     .arg(format!(
                         r#"diffoscope --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{path}/target/package/{}" {crates_io_crate_file}"#,
