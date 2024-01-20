@@ -155,7 +155,7 @@ fn main() {
 
                 if !target_directory.join(".done").exists() {
                     let command = format!(
-                        r#"(cd "{path_display}/{path_in_vcs}" && cargo package --no-verify --package {} && tar -xf {target_directory_display}/package/{} -C {target_directory_display} && touch {target_directory_display}/{}/.cargo-ok && touch {target_directory_display}/.done)"#,
+                        r#"(cd "{path_display}/{path_in_vcs}" && cargo package --no-verify --package {} && tar -xf "{target_directory_display}/package/{}" -C "{target_directory_display}" && touch "{target_directory_display}/{}/.cargo-ok" && touch "{target_directory_display}/.done")"#,
                         package.name(),
                         package.package_id().tarball_name(),
                         package
@@ -223,7 +223,7 @@ fn main() {
                 // diffoscope --exclude-directory-metadata=yes tmp/adler\ v1.0.2/target/unpacked/adler-1.0.2/ ~/.cargo/registry/src/index.crates.io-6f17d22bba15001f/adler-1.0.2/
 
                 let command = format!(
-                    r#"diffoscope --exclude "**/.cargo-ok" --exclude "**/.cargo_vcs_info.json" --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{target_directory_display}/{}" {crates_io}"#,
+                    r#"diffoscope --exclude "**/.cargo-ok" --exclude "**/.cargo_vcs_info.json" --exclude "**/Cargo.toml" --exclude "**/Cargo.lock" --exclude-directory-metadata=recursive "{target_directory_display}/{}" "{crates_io}""#,
                     package
                         .package_id()
                         .tarball_name()
