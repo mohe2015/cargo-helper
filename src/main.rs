@@ -2,7 +2,7 @@ use std::{fs, path::Path, process::Command};
 
 use cargo::{core::Workspace, ops::fetch, Config};
 use serde_json::Value;
-use tracing::{error, info, info_span, warn};
+use tracing::{debug, error, info_span, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 fn main() {
@@ -36,7 +36,7 @@ fn main() {
         );
         let _guard = span.enter();
         if package.package_id().source_id().is_path() || package.package_id().source_id().is_git() {
-            info!("skipping path or git dependency");
+            debug!("skipping path or git dependency");
             continue;
         }
         let url = package.manifest().metadata().repository.as_ref();
@@ -97,7 +97,7 @@ fn main() {
                 // TODO FIXME only clone and checkout once as commits are immutable
                 if !path.join(".git/.done").exists() {
                     let command = format!(
-                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --depth=1 {url} {hash} && git checkout FETCH_HEAD && touch .git/.done)"#
+                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --depth=1 {url} {hash} && git checkout FETCH_HEAD && git submodule update --init && touch .git/.done)"#
                     );
                     //println!("{}", command);
                     let output = Command::new("sh")
@@ -126,7 +126,7 @@ fn main() {
                     let version = package.version().to_string();
                     let package_name = package.name().to_string();
                     let command = format!(
-                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --filter=tree:0 {url} && git checkout FETCH_HEAD && git bisect start FETCH_HEAD $(git rev-list --max-parents=0 FETCH_HEAD) && git bisect run sh -c '! echo -e -n "{version}\n$(cargo metadata --format-version=1 --no-deps | jq --raw-output ".packages[] | select(.name == \"{package_name}\") | .version")" | sort -V -C')"#,
+                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --filter=tree:0 {url} && git checkout FETCH_HEAD && git bisect start FETCH_HEAD $(git rev-list --max-parents=0 FETCH_HEAD) && git bisect run sh -c '! echo -e -n "{version}\n$(cargo metadata --format-version=1 --no-deps | jq --raw-output ".packages[] | select(.name == \"{package_name}\") | .version")" | sort -V -C' && git submodule update --init && touch .git/.done)"#,
                     );
 
                     // maybe find commit by release date? shouldn't make too much sense because maybe you test code and release then
@@ -293,5 +293,6 @@ fn main() {
         } else {
             error!("no repository url, can't check anything");
         }
+        drop(_guard);
     }
 }
