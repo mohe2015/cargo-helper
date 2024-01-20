@@ -84,7 +84,7 @@ fn main() {
                     let command = format!(
                         r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --depth=1 {url} {hash} && git checkout FETCH_HEAD && touch .git/.done)"#
                     );
-                    println!("{}", command);
+                    //println!("{}", command);
                     let output = Command::new("sh")
                         .arg("-c")
                         .arg(command)
@@ -127,7 +127,7 @@ fn main() {
                             .tarball_name()
                             .trim_end_matches(".crate")
                     );
-                    println!("{command}");
+                    //println!("{command}");
                     let _output = Command::new("sh")
                         .arg("-c")
                         .arg(command)
