@@ -296,6 +296,8 @@ version = "0.1.0"
 dependencies = [
  "cargo",
  "serde_json",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

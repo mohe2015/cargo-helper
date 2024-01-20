@@ -6,10 +6,16 @@ use std::{
 
 use cargo::{core::Workspace, ops::fetch, Config};
 use serde_json::Value;
+use tracing::{error, info_span, trace, warn};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 fn main() {
-    // clear && cargo run | tee report.txt
-    println!("Checking supply chain security...");
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
+
+    // clear && RUST_LOG=cargo_helper=trace cargo run | tee report.txt
     let config = Config::default().unwrap();
     let workspace = Workspace::new(
         Path::new("/home/moritz/Documents/perfect-group-allocation/Cargo.toml"),
@@ -24,14 +30,11 @@ fn main() {
     let packages: Vec<_> = package_set.packages().collect();
     let base_path = Path::new("tmp");
     for (index, package) in packages.iter().enumerate() {
-        println!(
-            "[{index}/{}] {}",
-            packages.len(),
-            package.package_id().tarball_name()
-        );
+        let span = info_span!("package", package = package.package_id().tarball_name());
+        let _guard = span.enter();
         let url = package.manifest().metadata().repository.as_ref();
         if let Some(url) = url {
-            //println!("url: {url}");
+            let url = url.split("/tree/").next().unwrap();
             let vcs_info = package.root().join(".cargo_vcs_info.json");
             let vcs_info = fs::read_to_string(vcs_info);
             if let Ok(vcs_info) = vcs_info {
@@ -91,15 +94,15 @@ fn main() {
                         .output()
                         .expect("failed to execute process");
                     if !output.status.success() {
-                        println!(
-                            "failed {} {}",
+                        error!(
+                            "git failed\n{}\n{}",
                             std::str::from_utf8(&output.stderr).unwrap(),
                             std::str::from_utf8(&output.stdout).unwrap()
                         );
                         continue;
                     }
                 } else {
-                    println!("already cloned, skipping")
+                    //println!("already cloned, skipping")
                 }
 
                 // TODO FIXME workspace paths e.g. thiserror-impl
@@ -128,15 +131,21 @@ fn main() {
                             .trim_end_matches(".crate")
                     );
                     //println!("{command}");
-                    let _output = Command::new("sh")
+                    let output = Command::new("sh")
                         .arg("-c")
                         .arg(command)
-                        .stdout(Stdio::null())
-                        .stderr(Stdio::null())
-                        .status()
+                        .output()
                         .expect("failed to execute process");
+                    if !output.status.success() {
+                        error!(
+                            "packaging failed\n{}\n{}",
+                            std::str::from_utf8(&output.stderr).unwrap(),
+                            std::str::from_utf8(&output.stdout).unwrap()
+                        );
+                        continue;
+                    }
                 } else {
-                    println!("already packaged, skipping")
+                    //println!("already packaged, skipping")
                 }
 
                 /*let registry_source_id = SourceId::alt_registry(
@@ -186,17 +195,25 @@ fn main() {
                         .tarball_name()
                         .trim_end_matches(".crate"),
                 );
-                println!("{command}");
-                let _output = Command::new("sh")
+                // println!("{command}");
+                let output = Command::new("sh")
                     .arg("-c")
                     .arg(command)
-                    .status()
+                    .output()
                     .expect("failed to execute process");
+                if !output.status.success() {
+                    error!(
+                        "diffoscope failed\n{}\n{}",
+                        std::str::from_utf8(&output.stderr).unwrap(),
+                        std::str::from_utf8(&output.stdout).unwrap()
+                    );
+                    continue;
+                }
             } else {
-                println!("no vcs version info, would need to guess or bruteforce version")
+                warn!("no vcs version info, would need to guess or bruteforce version")
             }
         } else {
-            println!("no repository url, can't check anything");
+            error!("no repository url, can't check anything");
         }
     }
 }
