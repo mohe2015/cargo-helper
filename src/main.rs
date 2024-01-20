@@ -128,7 +128,7 @@ fn main() {
                     let version = package.version().to_string();
                     let package_name = package.name().to_string();
                     let command = format!(
-                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --filter=tree:0 {url} && git bisect start FETCH_HEAD $(git rev-list --max-parents=0 FETCH_HEAD) && git bisect run sh -c '! echo -e -n "{version}\n$(cargo metadata --format-version=1 --no-deps | jq --raw-output ".packages[] | select(.name == \"{package_name}\") | .version")" | sort -V -C')"#,
+                        r#"(mkdir -p "{path_display}" && cd "{path_display}" && git init && git fetch --filter=tree:0 {url} && git checkout FETCH_HEAD && git bisect start FETCH_HEAD $(git rev-list --max-parents=0 FETCH_HEAD) && git bisect run sh -c '! echo -e -n "{version}\n$(cargo metadata --format-version=1 --no-deps | jq --raw-output ".packages[] | select(.name == \"{package_name}\") | .version")" | sort -V -C')"#,
                     );
 
                     // maybe find commit by release date? shouldn't make too much sense because maybe you test code and release then
